@@ -1476,8 +1476,12 @@
                 foundUrl = true;
               }
               if (!foundUrl) {
-                // 如果没有匹配到 markdown 图片，可能返回的就是纯 URL
-                if (content.startsWith('http')) urls.push(content);
+                // 如果没有匹配到 markdown 图片，尝试直接提取纯 URL
+                const urlRegex = /(https?:\/\/[^\s\)]+)/g;
+                while ((match = urlRegex.exec(content)) !== null) {
+                  urls.push(match[1]);
+                  foundUrl = true;
+                }
               }
             }
           }
