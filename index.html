@@ -1298,7 +1298,7 @@
             payload = {
               model: model,
               prompt: prompt,
-              aspectRatio: ui.ratio.value === '1:1' ? '1:1' : ui.ratio.value || 'auto', 
+              aspectRatio: ui.ratio.value === '1:1' ? '1:1' : (ui.ratio.value || 'auto'), 
               imageSize: ui.size.value || '1K',
               webHook: "-1",
               shutProgress: false
@@ -1339,8 +1339,11 @@
             let errMessage = `HTTP ${res.status}`;
             try {
               const errData = await res.json();
+              console.error("API 响应错误详情:", errData);
               if (errData.error && errData.error.message) errMessage = errData.error.message;
               else if (errData.message) errMessage = errData.message;
+              else if (errData.msg) errMessage = errData.msg; // 添加对 msg 字段的兼容
+              else errMessage = JSON.stringify(errData); // 如果没有标准错误字段，则输出完整错误信息
             } catch (e) { }
             
             if (errMessage.includes('experiencing high demand') || res.status === 429) {
@@ -1353,6 +1356,15 @@
           let rawResponseDebug = [];
           
           const contentType = res.headers.get('content-type') || '';
+          
+          // 如果响应是普通的 JSON，直接抛出异常（针对 API 返回 200 但 code < 0 的情况）
+          if (contentType.includes('application/json')) {
+            const data = await res.clone().json();
+            if (data.code && data.code < 0) {
+                console.error("API 业务逻辑错误详情:", data);
+                throw new Error(data.msg || data.error || JSON.stringify(data));
+            }
+          }
           if (contentType.includes('text/event-stream') || contentType.includes('stream') || contentType.includes('application/x-ndjson')) {
             // 处理流式响应
             const reader = res.body.getReader();
