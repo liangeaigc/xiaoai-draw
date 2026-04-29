@@ -809,6 +809,64 @@
       padding: 60px 20px;
       font-size: 14px;
     }
+
+    .template-section {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .template-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .template-btn {
+      min-height: 34px;
+      padding: 0 14px;
+      border-radius: 999px;
+      border: 1px solid var(--glass-border);
+      background: rgba(255, 255, 255, 0.08);
+      color: #ddd;
+      font-size: 13px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .template-btn:hover,
+    .template-btn.active {
+      background: rgba(212, 175, 55, 0.18);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .template-guide {
+      display: none;
+      background: rgba(0, 0, 0, 0.22);
+      border: 1px solid var(--glass-border);
+      border-left: 3px solid var(--accent);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #ccc;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .template-guide.show {
+      display: block;
+    }
+
+    .template-guide-title {
+      color: var(--accent);
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .template-guide ul {
+      margin: 4px 0 0;
+      padding-left: 18px;
+    }
   </style>
 </head>
 
@@ -827,6 +885,12 @@
       <div>
         <label>创意描述 (Prompt)</label>
         <textarea id="prompt" placeholder="输入图片描述，支持中英文"></textarea>
+      </div>
+
+      <div class="template-section">
+        <label>提示词模板</label>
+        <div class="template-buttons" id="templateButtons"></div>
+        <div class="template-guide" id="templateGuide"></div>
       </div>
 
       <div class="inline-row">
@@ -956,6 +1020,8 @@
       const el = (id) => document.getElementById(id);
       const ui = {
         prompt: el('prompt'),
+        templateButtons: el('templateButtons'),
+        templateGuide: el('templateGuide'),
         model: el('modelSelect'),
         ratio: el('ratioSelect'),
         size: el('sizeSelect'),
@@ -991,6 +1057,21 @@
       let currentImgIndex = -1; // 当前大图在所有图片中的索引
       let viewingFromHistory = false; // 标记是否从历史记录查看大图
 
+      const promptTemplates = [
+        {
+          id: 'palm',
+          name: '手相',
+          prompt: '请根据上传的清晰掌纹图片，分析手掌纹路、掌丘、生命线、智慧线、感情线和事业线，并生成一份通俗易懂、积极正向的手相解读报告。请避免绝对化预测，语言温和自然，适合普通用户阅读。',
+          guideTitle: '手相图片上传说明',
+          guideItems: [
+            '上传一张清晰的掌纹图片，手掌完整入镜，掌心朝上。',
+            '光线充足，避免阴影、反光和严重美颜滤镜。',
+            '掌纹尽量清楚，不要模糊，建议近距离拍摄。',
+            '建议只上传一只手，优先上传惯用手。'
+          ]
+        }
+      ];
+
       // ====== 初始化：加载缓存 ======
       ui.key.value = localStorage.getItem(STORE_KEY) || '';
       if (localStorage.getItem(STORE_RATIO)) ui.ratio.value = localStorage.getItem(STORE_RATIO);
@@ -998,6 +1079,31 @@
 
       // 分辨率初始化：优先缓存，无缓存则默认 4K
       ui.size.value = localStorage.getItem(STORE_SIZE) || '4K';
+
+      function renderPromptTemplates() {
+        ui.templateButtons.innerHTML = promptTemplates.map(item => `
+          <button type="button" class="template-btn" data-template-id="${item.id}">${item.name}</button>
+        `).join('');
+
+        ui.templateButtons.querySelectorAll('.template-btn').forEach(btn => {
+          btn.onclick = () => {
+            const tpl = promptTemplates.find(item => item.id === btn.dataset.templateId);
+            if (!tpl) return;
+
+            ui.prompt.value = tpl.prompt;
+            ui.templateButtons.querySelectorAll('.template-btn').forEach(item => item.classList.remove('active'));
+            btn.classList.add('active');
+            ui.templateGuide.innerHTML = `
+              <div class="template-guide-title">${tpl.guideTitle}</div>
+              <ul>${tpl.guideItems.map(text => `<li>${text}</li>`).join('')}</ul>
+            `;
+            ui.templateGuide.classList.add('show');
+            msg(`已套用「${tpl.name}」模板，请按说明上传图片`);
+          };
+        });
+      }
+
+      renderPromptTemplates();
 
       // 监听保存
       ui.saveKey.onclick = () => {
