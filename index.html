@@ -1012,11 +1012,22 @@
 
         msg('正在查询剩余次数...');
         try {
-          const res = await fetch('https://grsai.dakka.com.cn/client/openapi/getAPIKeyCredits', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ apiKey: key })
-          });
+          const creditsUrl = 'https://grsai.dakka.com.cn/client/openapi/getAPIKeyCredits';
+          const body = JSON.stringify({ apiKey: key });
+          let res;
+          try {
+            res = await fetch(creditsUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body
+            });
+          } catch (networkError) {
+            res = await fetch(creditsUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+              body
+            });
+          }
           const data = await res.json();
           if (data.code === 0 && data.data && typeof data.data.credits === 'number') {
             const credits = data.data.credits;
@@ -1026,7 +1037,8 @@
             msg('查询失败: ' + (data.msg || '未知错误'), true);
           }
         } catch (e) {
-          msg('查询失败: ' + e.message, true);
+          const isNetworkError = e && (e.message || '').includes('Failed to fetch');
+          msg(isNetworkError ? '查询失败: 网络连接被浏览器拦截或接口暂时不可达，请刷新页面或稍后重试' : '查询失败: ' + e.message, true);
         }
       };
       ui.ratio.onchange = () => localStorage.setItem(STORE_RATIO, ui.ratio.value);
