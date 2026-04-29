@@ -1005,6 +1005,29 @@
         msg('Key 已保存');
       };
 
+      function postJsonByXhr(url, body, contentType = 'application/json') {
+        return new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', url, true);
+          xhr.timeout = 30000;
+          xhr.setRequestHeader('Content-Type', contentType);
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                resolve(JSON.parse(xhr.responseText));
+              } catch (e) {
+                reject(new Error('接口返回格式异常'));
+              }
+            } else {
+              reject(new Error(`HTTP ${xhr.status}`));
+            }
+          };
+          xhr.onerror = () => reject(new Error('网络连接被关闭'));
+          xhr.ontimeout = () => reject(new Error('请求超时'));
+          xhr.send(body);
+        });
+      }
+
       // 查询剩余次数
       ui.queryCredits.onclick = async () => {
         const key = ui.key.value.trim();
@@ -1014,21 +1037,12 @@
         try {
           const creditsUrl = 'https://grsai.dakka.com.cn/client/openapi/getAPIKeyCredits';
           const body = JSON.stringify({ apiKey: key });
-          let res;
+          let data;
           try {
-            res = await fetch(creditsUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body
-            });
-          } catch (networkError) {
-            res = await fetch(creditsUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-              body
-            });
+            data = await postJsonByXhr(creditsUrl, body, 'application/json');
+          } catch (firstError) {
+            data = await postJsonByXhr(creditsUrl, body, 'text/plain;charset=UTF-8');
           }
-          const data = await res.json();
           if (data.code === 0 && data.data && typeof data.data.credits === 'number') {
             const credits = data.data.credits;
             const remainingPoints = credits / 10;
@@ -1037,8 +1051,7 @@
             msg('查询失败: ' + (data.msg || '未知错误'), true);
           }
         } catch (e) {
-          const isNetworkError = e && (e.message || '').includes('Failed to fetch');
-          msg(isNetworkError ? '查询失败: 网络连接被浏览器拦截或接口暂时不可达，请刷新页面或稍后重试' : '查询失败: ' + e.message, true);
+          msg('查询失败: ' + (e.message || '网络连接异常，请稍后重试'), true);
         }
       };
       ui.ratio.onchange = () => localStorage.setItem(STORE_RATIO, ui.ratio.value);
