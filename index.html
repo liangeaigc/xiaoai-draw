@@ -816,29 +816,8 @@
       gap: 10px;
     }
 
-    .template-buttons {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .template-btn {
-      min-height: 34px;
-      padding: 0 14px;
-      border-radius: 999px;
-      border: 1px solid var(--glass-border);
-      background: rgba(255, 255, 255, 0.08);
-      color: #ddd;
-      font-size: 13px;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-
-    .template-btn:hover,
-    .template-btn.active {
-      background: rgba(212, 175, 55, 0.18);
-      border-color: var(--accent);
-      color: var(--accent);
+    .template-select {
+      min-height: 42px;
     }
 
     .template-guide {
@@ -889,7 +868,7 @@
 
       <div class="template-section">
         <label>提示词模板</label>
-        <div class="template-buttons" id="templateButtons"></div>
+        <select class="template-select" id="templateSelect"></select>
         <div class="template-guide" id="templateGuide"></div>
       </div>
 
@@ -1020,7 +999,7 @@
       const el = (id) => document.getElementById(id);
       const ui = {
         prompt: el('prompt'),
-        templateButtons: el('templateButtons'),
+        templateSelect: el('templateSelect'),
         templateGuide: el('templateGuide'),
         model: el('modelSelect'),
         ratio: el('ratioSelect'),
@@ -1165,26 +1144,27 @@
       ui.size.value = localStorage.getItem(STORE_SIZE) || '4K';
 
       function renderPromptTemplates() {
-        ui.templateButtons.innerHTML = promptTemplates.map(item => `
-          <button type="button" class="template-btn" data-template-id="${item.id}">${item.name}</button>
-        `).join('');
+        ui.templateSelect.innerHTML = [
+          '<option value="">选择提示词模板</option>',
+          ...promptTemplates.map(item => `<option value="${item.id}">${item.name}</option>`)
+        ].join('');
 
-        ui.templateButtons.querySelectorAll('.template-btn').forEach(btn => {
-          btn.onclick = () => {
-            const tpl = promptTemplates.find(item => item.id === btn.dataset.templateId);
-            if (!tpl) return;
+        ui.templateSelect.onchange = () => {
+          const tpl = promptTemplates.find(item => item.id === ui.templateSelect.value);
+          if (!tpl) {
+            ui.templateGuide.innerHTML = '';
+            ui.templateGuide.classList.remove('show');
+            return;
+          }
 
-            ui.prompt.value = tpl.prompt;
-            ui.templateButtons.querySelectorAll('.template-btn').forEach(item => item.classList.remove('active'));
-            btn.classList.add('active');
-            ui.templateGuide.innerHTML = `
-              <div class="template-guide-title">${tpl.guideTitle}</div>
-              <ul>${tpl.guideItems.map(text => `<li>${text}</li>`).join('')}</ul>
-            `;
-            ui.templateGuide.classList.add('show');
-            msg(`已套用「${tpl.name}」模板，请按说明上传图片`);
-          };
-        });
+          ui.prompt.value = tpl.prompt;
+          ui.templateGuide.innerHTML = `
+            <div class="template-guide-title">${tpl.guideTitle}</div>
+            <ul>${tpl.guideItems.map(text => `<li>${text}</li>`).join('')}</ul>
+          `;
+          ui.templateGuide.classList.add('show');
+          msg(`已套用「${tpl.name}」模板，请按说明上传图片`);
+        };
       }
 
       renderPromptTemplates();
